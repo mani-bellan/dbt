@@ -1,0 +1,171 @@
+
+
+
+mkdir dbt
+brew install python@3.11 virtualenv
+
+virtualenv venv --python=python3.11
+  
+pip install dbt-snowflake==1.5.0
+pip install dbt-bigquery
+
+## To check if dbt is installed 
+$ dbt
+/Users/manikandanbellan/.dbt/profiles.yml
+
+mkdir ~/.dbt
+
+## To start dbt
+dbt init dezoomcamp
+
+## To check if all setup
+dbt debug
+
+#To copy  folder to bigquery
+dbt seed
+
+#Using confguration (table/view) and references to models
+
+{{ config(
+  materialized = 'table',
+) }}
+WITH fct_reviews AS (
+    SELECT * FROM {{ ref('fct_reviews') }}
+),
+full_moon_dates AS (
+    SELECT * FROM {{ ref('seed_full_moon_dates') }}
+)
+SELECT r.*,
+ CASE
+    WHEN fm.full_moon_date IS NULL THEN 'not full moon'
+    ELSE 'full moon'
+  END AS is_full_moon
+FROM
+  fct_reviews
+  r
+  LEFT JOIN full_moon_dates
+  fm
+  ON (TO_DATE(r.review_date) = DATEADD(DAY, 1, fm.full_moon_date))
+
+# to check source freshness
+
+dbt source freshness
+
+# Creating Snapshot
+
+-- Check changes on all columns
+{% snapshot test_snapshot %}
+    {{
+        config(
+            strategy='check',
+            unique_key='id',
+            target_schema='snapshots',
+            check_cols= 'all'
+        )
+    }}
+
+select
+        *
+from {{ ref('modle_in_sample_folder') }}
+
+{% endsnapshot %}
+
+
+-- CHeck on unique key and a timestamp
+{% snapshot scd_raw_listings %}
+
+{{
+config(
+       target_schema='dev',
+       unique_key='id',
+       strategy='timestamp',
+       updated_at='updated_at',
+       invalidate_hard_deletes=True
+) }}
+
+select * FROM {{ source('airbnb', 'listings') }}
+
+{% endsnapshot %}
+
+
+# Creating tests and executing
+
+version: 2
+
+models:
+ - name: dim_listings_cleansed
+   columns:
+    - name: listing_id
+      tests:
+        - unique
+        - not_null
+ 
+    - name: host_id
+      tests:
+      - not_null
+      - relationships:
+          to: ref('dim_hosts_cleansed')
+          field: host_id
+
+    - name: room_type
+      tests:
+        - accepted_values:
+            values: ['Entire home/apt',
+            'Private room',
+            'Shared room',
+            'Hotel room']   
+
+# Singular test
+
+SELECT *
+FROM
+    {{ ref('dim_listings_cleansed') }}
+WHERE minimum_nights < 1
+LIMIT 10
+
+dbt test --select dim_listings_cleansed
+
+
+# Installing dbt utils
+
+create package.yml in project folder
+
+packages:
+ - package: dbt-labs/dbt_utils
+   version: 1.1.1
+
+run dbt deps --> this will install these packages
+
+## Documentation Genertion
+dbt docs generate
+dbt docs serve
+
+
+# Expecttions testing (https://github.com/calogica/dbt-expectations#expect_column_distinct_count_to_equal)
+
+version: 2
+sources:
+  - name: airbnb
+    schema: raw
+    tables:
+      - name: listings
+        identifier: raw_listings
+        columns :
+          - name : room_type
+            tests :
+             - dbt_expectations.expect_column_distinct_count_to_equal:
+                 value : 4
+          - name : price
+            tests :
+             - dbt_expectations.expect_column_values_to_match_regex:
+                regex: "^\\\\$[0-9][0-9\\\\.]+$"       
+      - name: hosts
+        identifier: raw_hosts
+      - name: reviews
+        identifier: raw_reviews
+        loaded_at_field: date
+        freshness:
+          warn_after: {count: 1, period: hour}
+          error_after: {count: 24, period: hour}
+
+dbt test --select source : aribnb.listings
