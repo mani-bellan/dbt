@@ -9,8 +9,8 @@ sources:
 
       # loaded_at_field: record_loaded_at
     tables:
-      - name: greentaxi_tripdata
-      - name: yellow_taxi_rides
+      - name: green_taxi_tripdata_hw
+      - name: yellow_taxi_tripdata_hw
          # freshness:
            # error_after: {count: 6, period: hour}
 
