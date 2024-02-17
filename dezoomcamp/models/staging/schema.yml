@@ -83,7 +83,7 @@ models:
             description: Description of the payment_type code
             tests:
               - accepted_values:
-                  values: [1,2,3,4,5]
+                  values: "{{ var('payment_type_values') }}"
                   severity : warn
           - name: Fare_amount 
             description: > 
