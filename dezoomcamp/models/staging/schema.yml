@@ -11,6 +11,7 @@ sources:
     tables:
       - name: green_taxi_tripdata_hw
       - name: yellow_taxi_tripdata_hw
+      - name: fhv_taxi_tripdata_hw      
          # freshness:
            # error_after: {count: 6, period: hour}
 
@@ -191,3 +192,35 @@ models:
             description: Total amount of all tolls paid in trip.
           - name: Total_amount 
             description: The total amount charged to passengers. Does not include cash tips.
+
+    - name: stg_fhv_tripdata
+      description: > 
+        Trips made by For Hire Vehicle.        
+      columns:
+          - name: dispatching_base_num
+            description: Dispatching based id
+          - name: pickup_datetime 
+            description: The date and time when the meter was engaged.
+          - name: dropoff_datetime 
+            description: The date and time when the meter was disengaged.
+          - name: pickup_locationid
+            description: locationid where the meter was engaged.
+            tests:
+              - relationships:
+                  to: ref('taxi_zone_lookup')
+                  field: locationid
+                  severity: warn
+          - name: dropoff_locationid 
+            description: locationid where the meter was engaged.
+            tests:
+              - relationships:
+                  to: ref('taxi_zone_lookup')
+                  field: locationid
+                  severity: warn
+          - name: SR_Flag 
+            description: >
+                Service Request Flag
+          - name: affiliate_base_num 
+            description: > 
+              Affiliate base number
+          

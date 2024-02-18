@@ -115,3 +115,7 @@ models:
       - name: payment_type_description
         data_type: string
         description: ""
+
+  - name: fact_fhv_trips
+    description: >
+      For hire vehicle trips. 
